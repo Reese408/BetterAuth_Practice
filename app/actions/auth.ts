@@ -1,41 +1,15 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { signUpSchema, signInSchema } from "@/lib/validations/auth";
+import { redirect } from "next/navigation";
 
 type ActionState = {
   error?: string;
   success?: boolean;
 } | null;
 
-/**
- * ==============================================================================
- * SIGN UP ACTION - WITH ZOD VALIDATION
- * ==============================================================================
- *
- * SECURITY IMPROVEMENTS:
- * 1. ✅ Zod validation (prevents XSS, SQL injection, DoS)
- * 2. ✅ Type safety (no more "as string" casts)
- * 3. ✅ Strong password requirements (8+ chars, uppercase, number, special char)
- * 4. ✅ Email normalization (lowercase, trimmed)
- * 5. ✅ Input sanitization (only safe characters in name)
- * 6. ✅ Length limits (prevent DoS attacks)
- *
- * VULNERABILITIES FIXED:
- * ❌ BEFORE: formData.get("email") as string
- *    - Could be null → crashes app
- *    - Could be "  EMAIL@EXAMPLE.COM  " → duplicate accounts
- *    - Could contain <script> tags → XSS attack
- *    - Could be 10MB string → DoS attack
- *
- * ✅ AFTER: Zod validates and transforms all inputs
- *    - Guaranteed non-null
- *    - Normalized (lowercase, trimmed)
- *    - Sanitized (no dangerous characters)
- *    - Length-limited (max 255 chars)
- */
 export async function signUpAction(
   _prevState: ActionState,
   formData: FormData
@@ -82,10 +56,8 @@ export async function signUpAction(
         // Log for admin monitoring (don't expose to user)
         console.log(`Signup attempt with existing email: ${new Date().toISOString()}`);
 
-        // Redirect to check-email page WITHOUT creating account
-        // User thinks they successfully signed up, but no duplicate created
-        // This prevents attackers from discovering registered emails
-        redirect("/check-email");
+        // Return success to redirect on client side
+        return { success: true };
       }
 
       // Password error (shouldn't happen with Zod, but Better Auth might have additional rules)
@@ -104,8 +76,8 @@ export async function signUpAction(
     return { error: "Failed to create account. Please try again." };
   }
 
-  // STEP 6: Success - redirect to check email page
-  redirect("/check-email");
+  // STEP 6: Success - return success state for client-side redirect
+  return { success: true };
 }
 
 /**
@@ -192,8 +164,8 @@ export async function signInAction(
     return { error: "Failed to sign in. Please try again." };
   }
 
-  // STEP 6: Success - redirect to dashboard
-  redirect("/dashboard");
+  // STEP 6: Success - return success state for client-side redirect
+  return { success: true };
 }
 
 export async function signOutAction() {

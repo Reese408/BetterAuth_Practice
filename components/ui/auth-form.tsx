@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { signUpSchema } from "@/lib/validations/auth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,11 +29,23 @@ interface AuthFormProps {
  */
 export function AuthForm({ action, type }: AuthFormProps) {
   const [state, formAction, isPending] = useActionState(action, null);
+  const router = useRouter();
 
   // Client-side validation errors
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [nameError, setNameError] = useState("");
+
+  // Handle successful authentication by redirecting client-side
+  useEffect(() => {
+    if (state?.success) {
+      if (type === "signup") {
+        router.push("/check-email");
+      } else {
+        router.push("/dashboard");
+      }
+    }
+  }, [state, type, router]);
 
   // Password strength for signup
   const [passwordStrength, setPasswordStrength] = useState<{

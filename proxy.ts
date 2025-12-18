@@ -5,16 +5,23 @@
  * before they reach your pages.
  */
 
+import { auth } from "@/lib/auth";
+
 export default async function proxy(req: Request): Promise<Response | null> {
   const url = new URL(req.url);
   const { pathname } = url;
 
-  // Get session cookie
-  const cookies = req.headers.get("cookie") || "";
-  const sessionCookie = cookies
-    .split(";")
-    .find((c) => c.trim().startsWith("better-auth.session_token="));
-  const isAuthenticated = !!sessionCookie;
+  // Validate session with Better Auth (not just check if cookie exists)
+  let isAuthenticated = false;
+  try {
+    const session = await auth.api.getSession({
+      headers: req.headers,
+    });
+    isAuthenticated = !!session;
+  } catch (error) {
+    // Session validation failed - user is not authenticated
+    isAuthenticated = false;
+  }
 
   // Protected routes - require authentication
   const protectedRoutes = ["/dashboard", "/home"];
