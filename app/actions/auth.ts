@@ -4,6 +4,9 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { signUpSchema, signInSchema } from "@/lib/validations/auth";
 import { redirect } from "next/navigation";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 type ActionState = {
   error?: string;
@@ -174,4 +177,76 @@ export async function signOutAction() {
     });
 
     redirect("/");
+}
+
+/**
+ * ==============================================================================
+ * UPDATE PROFILE ACTION
+ * ==============================================================================
+ *
+ * Allows users to update their name, username, and bio
+ */
+export async function updateProfileAction(
+  _prevState: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session) {
+      return { error: "You must be logged in to update your profile" };
+    }
+
+    const name = formData.get("name") as string;
+    const username = formData.get("username") as string;
+    const bio = formData.get("bio") as string;
+
+    // Basic validation
+    if (name && name.length > 100) {
+      return { error: "Name must be less than 100 characters" };
+    }
+
+    if (username && username.length > 30) {
+      return { error: "Username must be less than 30 characters" };
+    }
+
+    // Username validation - only alphanumeric and underscores
+    if (username && !/^[a-zA-Z0-9_]+$/.test(username)) {
+      return { error: "Username can only contain letters, numbers, and underscores" };
+    }
+
+    if (bio && bio.length > 500) {
+      return { error: "Bio must be less than 500 characters" };
+    }
+
+    // Check if username is already taken (if username is being changed)
+    if (username) {
+      const existingUser = await prisma.user.findUnique({
+        where: { username },
+      });
+
+      if (existingUser && existingUser.id !== session.user.id) {
+        return { error: "Username is already taken" };
+      }
+    }
+
+    // Update user profile using Prisma
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        name: name || null,
+        username: username || null,
+        bio: bio || null,
+      },
+    });
+
+    return { success: true };
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    return { error: "Failed to update profile. Please try again." };
+  }
 }

@@ -452,7 +452,7 @@ export async function deleteWorkout(id: string): Promise<ActionResponse> {
 /**
  * Get personal records for the current user
  */
-export async function getPersonalRecords(): Promise<ActionResponse<PersonalRecord[]>> {
+export async function getPersonalRecords(): Promise<ActionResponse<any[]>> {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -468,6 +468,15 @@ export async function getPersonalRecords(): Promise<ActionResponse<PersonalRecor
     const records = await prisma.personalRecord.findMany({
       where: {
         userId: session.user.id,
+      },
+      include: {
+        exercise: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+          },
+        },
       },
       orderBy: {
         date: "desc",
@@ -714,7 +723,7 @@ export async function getWorkoutStats(): Promise<ActionResponse<WorkoutStats>> {
 
     const [
       totalWorkouts,
-      totalVolume,
+      allSets,
       recentWorkouts,
     ] = await Promise.all([
       prisma.workoutLog.count({
@@ -724,15 +733,16 @@ export async function getWorkoutStats(): Promise<ActionResponse<WorkoutStats>> {
         },
       }),
 
-      // ✅ TOTAL VOLUME (lbs)
-      prisma.setLog.aggregate({
+      // Get all sets to calculate total volume (weight * reps)
+      prisma.setLog.findMany({
         where: {
           workout: {
             userId: session.user.id,
           },
         },
-        _sum: {
-          volume: true, // assumes `volume = weight * reps`
+        select: {
+          weight: true,
+          reps: true,
         },
       }),
 
@@ -750,16 +760,23 @@ export async function getWorkoutStats(): Promise<ActionResponse<WorkoutStats>> {
       }),
     ]);
 
+    // Calculate total volume manually
+    const totalVolume = allSets.reduce(
+      (sum, set) => sum + (set.weight || 0) * (set.reps || 0),
+      0
+    );
+
     return {
       success: true,
       data: {
         totalWorkouts,
+        totalSets: allSets.length,
         workoutsThisWeek: recentWorkouts.length,
         totalMinutesThisWeek: recentWorkouts.reduce(
           (sum, w) => sum + (w.totalDuration || 0),
           0
         ),
-        totalVolume: totalVolume._sum.volume ?? 0,
+        totalVolume,
       },
     };
   } catch (error) {

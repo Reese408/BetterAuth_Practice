@@ -88,6 +88,7 @@ model Exercise {
   creator         User?             @relation("CreatedExercises", fields: [createdBy], references: [id], onDelete: SetNull)
   workoutExercises WorkoutExercise[]
   setLogs         SetLog[]
+  personalRecords PersonalRecord[]  @relation("PersonalRecords")
 }
 
 model WorkoutRoutine {
@@ -159,6 +160,7 @@ model PersonalRecord {
   weight     Float
   reps       Int
   date       DateTime @default(now())
+  exercise   Exercise @relation("PersonalRecords", fields: [exerciseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, exerciseId])
   @@index([userId, date])
