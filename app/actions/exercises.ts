@@ -150,11 +150,20 @@ export async function createExercise(
       success: true,
       data: exercise,
     };
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
+      };
+    }
+
+    // Handle Prisma unique constraint error
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0] || 'field';
+      return {
+        success: false,
+        error: `An exercise with this ${field} already exists. Please use a different ${field}.`,
       };
     }
 
@@ -220,11 +229,20 @@ export async function updateExercise(
       success: true,
       data: exercise,
     };
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
+      };
+    }
+
+    // Handle Prisma unique constraint error
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0] || 'field';
+      return {
+        success: false,
+        error: `An exercise with this ${field} already exists. Please use a different ${field}.`,
       };
     }
 

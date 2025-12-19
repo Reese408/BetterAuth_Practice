@@ -82,7 +82,7 @@ export async function startWorkout(data: StartWorkoutFormData): Promise<ActionRe
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
       };
     }
 
@@ -165,7 +165,7 @@ export async function logSet(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
       };
     }
 
@@ -263,7 +263,7 @@ export async function completeWorkout(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
       };
     }
 
@@ -712,8 +712,11 @@ export async function getWorkoutStats(): Promise<ActionResponse<WorkoutStats>> {
       };
     }
 
-    const [totalWorkouts, totalSets, recentWorkouts] = await Promise.all([
-      // Total completed workouts
+    const [
+      totalWorkouts,
+      totalVolume,
+      recentWorkouts,
+    ] = await Promise.all([
       prisma.workoutLog.count({
         where: {
           userId: session.user.id,
@@ -721,16 +724,18 @@ export async function getWorkoutStats(): Promise<ActionResponse<WorkoutStats>> {
         },
       }),
 
-      // Total sets logged
-      prisma.setLog.count({
+      // ✅ TOTAL VOLUME (lbs)
+      prisma.setLog.aggregate({
         where: {
           workout: {
             userId: session.user.id,
           },
         },
+        _sum: {
+          volume: true, // assumes `volume = weight * reps`
+        },
       }),
 
-      // Last 7 days of workouts
       prisma.workoutLog.findMany({
         where: {
           userId: session.user.id,
@@ -740,25 +745,22 @@ export async function getWorkoutStats(): Promise<ActionResponse<WorkoutStats>> {
           },
         },
         select: {
-          startTime: true,
           totalDuration: true,
         },
       }),
     ]);
 
-    const stats = {
-      totalWorkouts,
-      totalSets,
-      workoutsThisWeek: recentWorkouts.length,
-      totalMinutesThisWeek: recentWorkouts.reduce(
-        (sum, w) => sum + (w.totalDuration || 0),
-        0
-      ),
-    };
-
     return {
       success: true,
-      data: stats,
+      data: {
+        totalWorkouts,
+        workoutsThisWeek: recentWorkouts.length,
+        totalMinutesThisWeek: recentWorkouts.reduce(
+          (sum, w) => sum + (w.totalDuration || 0),
+          0
+        ),
+        totalVolume: totalVolume._sum.volume ?? 0,
+      },
     };
   } catch (error) {
     console.error("Failed to fetch workout stats:", error);
@@ -768,3 +770,4 @@ export async function getWorkoutStats(): Promise<ActionResponse<WorkoutStats>> {
     };
   }
 }
+

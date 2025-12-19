@@ -223,7 +223,7 @@ export async function createRoutine(data: CreateRoutineFormData): Promise<Action
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
       };
     }
 
@@ -354,7 +354,7 @@ export async function updateRoutine(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: error.errors[0].message,
+        error: error.issues[0].message,
       };
     }
 

@@ -289,6 +289,7 @@ export interface WorkoutStats {
   totalSets: number;
   workoutsThisWeek: number;
   totalMinutesThisWeek: number;
+  totalVolume: number; // total weight lifted
 }
 
 export interface PersonalRecord {
