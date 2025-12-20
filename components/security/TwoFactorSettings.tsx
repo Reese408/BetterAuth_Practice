@@ -317,6 +317,7 @@ export default function TwoFactorSettings({
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="verification-code">Verification Code</Label>
+                  <br></br>
                   <Input
                     id="verification-code"
                     type="text"

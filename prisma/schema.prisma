@@ -12,22 +12,24 @@ datasource db {
 // ============================================================================
 
 model User {
-  id              String            @id @default(cuid())
-  name            String?
-  email           String            @unique
-  emailVerified   Boolean           @default(false)
-  image           String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  bio             String?
-  username        String?           @unique
-  twoFactorEnabled Boolean          @default(false)
-  accounts        Account[]
-  sessions        Session[]
-  workoutRoutines WorkoutRoutine[]
-  workoutLogs     WorkoutLog[]
-  createdExercises Exercise[]      @relation("CreatedExercises")
-  twoFactors      TwoFactor[]
+  id                String            @id @default(cuid())
+  name              String?
+  email             String            @unique
+  emailVerified     Boolean           @default(false)
+  image             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  bio               String?
+  username          String?           @unique
+  twoFactorEnabled  Boolean           @default(false)
+
+  accounts          Account[]
+  sessions          Session[]
+  workoutRoutines   WorkoutRoutine[]
+  workoutPrograms   WorkoutProgram[]
+  workoutLogs       WorkoutLog[]
+  createdExercises  Exercise[]        @relation("CreatedExercises")
+  twoFactors        TwoFactor[]
 }
 
 model Account {
@@ -45,6 +47,7 @@ model Account {
   scope                   String?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+
   user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, accountId])
@@ -59,6 +62,7 @@ model Session {
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -81,6 +85,7 @@ model TwoFactor {
   enabled     Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
@@ -101,35 +106,40 @@ model TwoFactorVerification {
 // ============================================================================
 
 model Exercise {
-  id              String            @id @default(cuid())
-  name            String            @unique
-  category        String
-  muscleGroups    String[]
-  equipmentNeeded String?
-  instructions    String?
-  videoUrl        String?
-  demoGifUrl      String?
-  isPublic        Boolean           @default(true)
-  createdBy       String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  creator         User?             @relation("CreatedExercises", fields: [createdBy], references: [id], onDelete: SetNull)
+  id               String            @id @default(cuid())
+  name             String            @unique
+  category         String
+  muscleGroups     String[]
+  equipmentNeeded  String?
+  instructions     String?
+  videoUrl         String?
+  demoGifUrl       String?
+  isPublic         Boolean           @default(true)
+  createdBy        String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  creator          User?             @relation("CreatedExercises", fields: [createdBy], references: [id], onDelete: SetNull)
   workoutExercises WorkoutExercise[]
-  setLogs         SetLog[]
-  personalRecords PersonalRecord[]  @relation("PersonalRecords")
+  setLogs          SetLog[]
+  personalRecords  PersonalRecord[]  @relation("PersonalRecords")
 }
 
 model WorkoutRoutine {
-  id          String            @id @default(cuid())
-  name        String
-  description String?
-  isPublic    Boolean           @default(false)
-  createdBy   String
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  creator     User              @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  exercises   WorkoutExercise[]
-  workoutLogs WorkoutLog[]
+  id            String            @id @default(cuid())
+  name          String
+  description   String?
+  isPublic      Boolean           @default(false)
+  createdBy     String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  creator       User              @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  exercises     WorkoutExercise[]
+  workoutLogs   WorkoutLog[]
+  programs      ProgramRoutine[]
+
+  @@unique([name, createdBy])
 }
 
 model WorkoutExercise {
@@ -143,10 +153,42 @@ model WorkoutExercise {
   restPeriod     Int?
   notes          String?
   supersetGroup  Int?
+
   routine        WorkoutRoutine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
   exercise       Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
   @@index([routineId, orderIndex])
+}
+
+model WorkoutProgram {
+  id            String           @id @default(cuid())
+  name          String
+  description   String?
+  durationWeeks Int
+  isPublic      Boolean          @default(true)
+  createdBy     String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  creator       User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  routines      ProgramRoutine[]
+
+  @@index([createdBy])
+}
+
+model ProgramRoutine {
+  id          String           @id @default(cuid())
+  programId   String
+  routineId   String
+  weekNumber  Int
+  dayNumber   Int
+  notes       String?
+
+  program     WorkoutProgram   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  routine     WorkoutRoutine   @relation(fields: [routineId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, weekNumber, dayNumber])
+  @@index([programId])
 }
 
 model WorkoutLog {
@@ -157,6 +199,7 @@ model WorkoutLog {
   endTime       DateTime?
   totalDuration Int?
   notes         String?
+
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   routine       WorkoutRoutine? @relation(fields: [routineId], references: [id], onDelete: SetNull)
   setLogs       SetLog[]
@@ -175,6 +218,7 @@ model SetLog {
   completed  Boolean     @default(true)
   notes      String?
   timestamp  DateTime    @default(now())
+
   workout    WorkoutLog  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
   exercise   Exercise    @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
@@ -188,6 +232,7 @@ model PersonalRecord {
   weight     Float
   reps       Int
   date       DateTime @default(now())
+
   exercise   Exercise @relation("PersonalRecords", fields: [exerciseId], references: [id], onDelete: Cascade)
 
   @@unique([userId, exerciseId])
